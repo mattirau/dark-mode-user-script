@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    matti.force-dark-mode
-// @version      1.0.0
+// @version      1.1.0
 // @description  Force any website into dark mode by inverting its colors. Per-site toggle via the Tampermonkey menu or Alt+Shift+D; leaves already-dark sites alone.
 // @match        *://*/*
 // @run-at       document-start
@@ -23,6 +23,7 @@
 
   const HOST = location.hostname;
   const STORE_KEY = 'sites'; // { [hostname]: 'on' | 'off' }
+  const AUTO_KEY = 'autoDark'; // cached detection results: { [hostname]: boolean }
 
   const style = document.createElement('style');
   style.textContent = `
@@ -44,7 +45,9 @@
   `;
   document.documentElement.appendChild(style);
 
-  let pageLooksDark = false;
+  // Start from the cached result of the last visit, so already-dark sites
+  // are skipped from the very first paint instead of flashing bright.
+  let pageLooksDark = GM_getValue(AUTO_KEY, {})[HOST] === true;
 
   function siteSetting() {
     return GM_getValue(STORE_KEY, {})[HOST];
@@ -82,8 +85,19 @@
 
   function checkNativeDark() {
     if (!SKIP_ALREADY_DARK_PAGES || siteSetting() !== undefined) return;
+    // Measure with our own style switched off, otherwise we would read the
+    // white background this script forces onto <html>. This is synchronous,
+    // so the browser never paints the intermediate state.
+    const wasDisabled = style.disabled;
+    style.disabled = true;
     const lum = luminanceOf(document.body) ?? luminanceOf(document.documentElement);
+    style.disabled = wasDisabled;
     pageLooksDark = lum !== null && lum < DARK_LUMINANCE_THRESHOLD;
+    const cache = GM_getValue(AUTO_KEY, {});
+    if (cache[HOST] !== pageLooksDark) {
+      cache[HOST] = pageLooksDark;
+      GM_setValue(AUTO_KEY, cache);
+    }
     applyState();
   }
 

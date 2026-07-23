@@ -37,6 +37,12 @@ To limit the script to a single site, change the match line in the header, e.g.:
 // @match        *://example.com/*
 ```
 
+## Troubleshooting
+
+**White flash when a page loads.** The style is injected at `document-start`, but by default Tampermonkey may inject scripts slightly after the first paint. To fix this, open the Tampermonkey dashboard → **Settings** tab → set *Config mode* to **Advanced** → scroll to **Experimental** → set *Inject Mode* to **Instant**.
+
+On the *first* visit to a site that is already natively dark, the page may briefly appear bright before the auto-skip detection kicks in. The result is cached per site, so subsequent visits load correctly from the first paint.
+
 ## Known limitations
 
 The invert technique can't reach everything:
